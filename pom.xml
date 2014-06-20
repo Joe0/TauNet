@@ -10,7 +10,7 @@
 	
 	<groupId>com.joepritzel</groupId>
 	<artifactId>taunet</artifactId>
-	<version>0.1-SNAPSHOT</version>
+	<version>0.1</version>
 	<packaging>jar</packaging>
 	
 	<name>TauNet</name>
