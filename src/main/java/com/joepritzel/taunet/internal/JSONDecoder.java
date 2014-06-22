@@ -77,15 +77,8 @@ public class JSONDecoder extends Subscriber<JSONToObject> {
 												NettyAttributes.idKey).set(
 												id.id);
 									} else {
-										try {
-											message.channel.writeAndFlush(
-													new IDAlreadyConnectedException(id.id))
-													.sync();
-										} catch (Exception e1) {
-											// Don't care, closing anyway.
-										} finally {
-											message.channel.close();
-										}
+										throw new IDAlreadyConnectedException(
+												id.id);
 									}
 								} else {
 									broker.publish(o);

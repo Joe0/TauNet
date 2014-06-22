@@ -16,12 +16,13 @@ public class IDAlreadyConnectedException extends RuntimeException {
 	 *            - The ID to specify in the message.
 	 */
 	public IDAlreadyConnectedException(String id) {
-		super(id + " was already connected, all IDs must be unique.");
+		super(id + " was already connected, all IDs must be unique.", null);
 	}
 
 	/**
 	 * Randomly generated UID.
 	 */
 	private static final long serialVersionUID = 6272876823080508050L;
+
 
 }

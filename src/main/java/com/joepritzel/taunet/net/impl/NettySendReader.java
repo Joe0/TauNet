@@ -1,10 +1,13 @@
 package com.joepritzel.taunet.net.impl;
 
+import io.netty.channel.Channel;
+
 import java.lang.reflect.Modifier;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.joepritzel.feather.Subscriber;
+import com.joepritzel.taunet.IDAlreadyConnectedException;
 import com.joepritzel.taunet.internal.JSONWrapper;
 import com.joepritzel.taunet.net.Send;
 
@@ -30,7 +33,17 @@ public class NettySendReader extends Subscriber<Send<?>> {
 		((NettyConnection) message.conn).channel.writeAndFlush(gson
 				.toJson(new JSONWrapper(
 						message.data.getClass().getSimpleName(), gson
-								.toJson(message.data)))
-				+ "\n");
+								.toJson(message.data))));
+	}
+
+	public void exception(Channel channel, IDAlreadyConnectedException e) {
+		try {
+			channel.writeAndFlush(gson.toJson(new JSONWrapper(e.getClass()
+					.getSimpleName(), gson.toJson(e)))).sync();
+		} catch (InterruptedException e1) {
+			// Don't care.
+		} finally {
+			channel.close();
+		}
 	}
 }

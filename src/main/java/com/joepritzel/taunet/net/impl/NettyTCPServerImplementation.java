@@ -2,6 +2,7 @@ package com.joepritzel.taunet.net.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
@@ -16,7 +17,6 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.LineBasedFrameDecoder;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
 import io.netty.util.CharsetUtil;
@@ -24,6 +24,7 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 
 import com.joepritzel.feather.PSBroker;
 import com.joepritzel.taunet.Connection;
+import com.joepritzel.taunet.IDAlreadyConnectedException;
 import com.joepritzel.taunet.internal.JSONToObject;
 import com.joepritzel.taunet.net.NetworkingImplementation;
 import com.joepritzel.taunet.net.Send;
@@ -63,6 +64,11 @@ public class NettyTCPServerImplementation implements NetworkingImplementation {
 	 */
 	private String id;
 
+	/**
+	 * The instance of NettySendReader being used.
+	 */
+	private NettySendReader sendReader;
+
 	public NettyTCPServerImplementation(String host, int port) {
 		this.host = host;
 		this.port = port;
@@ -84,6 +90,8 @@ public class NettyTCPServerImplementation implements NetworkingImplementation {
 					"Can not call start more than once.");
 		}
 		this.id = id;
+		sendReader = new NettySendReader();
+		broker.subscribe(sendReader, Send.class);
 		group = new NioEventLoopGroup();
 		ServerBootstrap b = new ServerBootstrap();
 		b.group(group).channel(NioServerSocketChannel.class)
@@ -93,15 +101,13 @@ public class NettyTCPServerImplementation implements NetworkingImplementation {
 					@Override
 					public void initChannel(SocketChannel ch) throws Exception {
 						ChannelPipeline p = ch.pipeline();
-						p.addLast(new LineBasedFrameDecoder(80),
-								new StringDecoder(CharsetUtil.UTF_8),
+						p.addLast(new StringDecoder(CharsetUtil.UTF_8),
 								new StringEncoder(CharsetUtil.UTF_8),
 								new JSONServerHandler());
 					}
 				});
 
 		f = b.bind(host, port).sync();
-		broker.subscribe(new NettySendReader(), Send.class);
 	}
 
 	/**
@@ -120,9 +126,17 @@ public class NettyTCPServerImplementation implements NetworkingImplementation {
 		}
 
 		@Override
-		public void channelRead(ChannelHandlerContext ctx, Object msg) {
-			broker.publish(new JSONToObject(ctx.channel(), ((String) msg)
-					.trim()));
+		public void channelRead(ChannelHandlerContext ctx, Object msg)
+				throws Exception {
+			try {
+				broker.publish(new JSONToObject(ctx.channel(), (String) msg));
+			} catch (IDAlreadyConnectedException e) {
+				try {
+				sendReader.exception(ctx.channel(), e);
+				} catch(Throwable e1) {
+					e1.printStackTrace();
+				}
+			}
 		}
 
 		@Override
@@ -159,8 +173,12 @@ public class NettyTCPServerImplementation implements NetworkingImplementation {
 
 	@Override
 	public Connection getConnectionByID(String id) {
-		return getConnections().stream().filter(c -> c.getID().equals(id))
-				.findFirst().get();
+		try {
+			return getConnections().stream().filter(c -> c.getID().equals(id))
+					.findFirst().get();
+		} catch (NoSuchElementException e) {
+			return null;
+		}
 	}
 
 	@Override

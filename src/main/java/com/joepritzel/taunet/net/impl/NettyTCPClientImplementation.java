@@ -2,6 +2,7 @@ package com.joepritzel.taunet.net.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -15,7 +16,6 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.LineBasedFrameDecoder;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
 import io.netty.util.CharsetUtil;
@@ -88,6 +88,7 @@ public class NettyTCPClientImplementation implements NetworkingImplementation {
 			throw new IllegalStateException("Can only call start once.");
 		}
 		this.id = id;
+		broker.subscribe(new NettySendReader(), Send.class);
 		group = new NioEventLoopGroup();
 		Bootstrap b = new Bootstrap();
 		b.group(group).channel(NioSocketChannel.class)
@@ -96,15 +97,13 @@ public class NettyTCPClientImplementation implements NetworkingImplementation {
 					@Override
 					public void initChannel(SocketChannel ch) throws Exception {
 						ChannelPipeline p = ch.pipeline();
-						p.addLast(new LineBasedFrameDecoder(80),
-								new StringDecoder(CharsetUtil.UTF_8),
+						p.addLast(new StringDecoder(CharsetUtil.UTF_8),
 								new StringEncoder(CharsetUtil.UTF_8),
 								new JSONClientHandler());
 					}
 				});
 
 		f = b.connect(host, port).sync();
-		broker.subscribe(new NettySendReader(), Send.class);
 		while (!sendSet) {
 			Thread.sleep(100);
 		}
@@ -120,7 +119,6 @@ public class NettyTCPClientImplementation implements NetworkingImplementation {
 
 		@Override
 		public void channelActive(ChannelHandlerContext ctx) {
-			ctx.channel().attr(NettyAttributes.idKey).set(id);
 			Send.setDefaultConnection(new NettyConnection(ctx.channel()));
 			serverChannel = ctx.channel();
 			broker.publish(new Send<NettySelfID>(new NettyConnection(ctx
@@ -130,8 +128,7 @@ public class NettyTCPClientImplementation implements NetworkingImplementation {
 
 		@Override
 		public void channelRead(ChannelHandlerContext ctx, Object msg) {
-			broker.publish(new JSONToObject(ctx.channel(), ((String) msg)
-					.trim()));
+			broker.publish(new JSONToObject(ctx.channel(), (String) msg));
 		}
 
 		@Override
@@ -163,8 +160,12 @@ public class NettyTCPClientImplementation implements NetworkingImplementation {
 
 	@Override
 	public Connection getConnectionByID(String id) {
-		return getConnections().stream().filter(c -> c.getID().equals(id))
-				.findFirst().get();
+		try {
+			return getConnections().stream().filter(c -> c.getID().equals(id))
+					.findFirst().get();
+		} catch (NoSuchElementException e) {
+			return null;
+		}
 	}
 
 	@Override

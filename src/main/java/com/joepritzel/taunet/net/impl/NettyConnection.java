@@ -29,7 +29,18 @@ public class NettyConnection implements Connection {
 	 *            - The channel to use.
 	 */
 	public NettyConnection(Channel channel) {
-		this(channel, (String) channel.attr(NettyAttributes.idKey).get());
+		this(channel, getIDCons(channel));
+	}
+
+	/**
+	 * Used in the constructor to get the default ID.
+	 */
+	private static String getIDCons(Channel channel) {
+		String id =  channel.attr(NettyAttributes.idKey).get();
+		if(id == null) {
+			return "";
+		}
+		return id;
 	}
 
 	/**
