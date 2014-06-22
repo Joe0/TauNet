@@ -37,7 +37,7 @@ public class Client {
 		this.netImpl = netImpl;
 		this.broker = broker;
 		this.netImpl.setPSBroker(broker);
-		this.decoder = new JSONDecoder(this.broker);
+		this.decoder = new JSONDecoder(this.broker, this.netImpl);
 		this.broker.subscribe(decoder, JSONToObject.class);
 	}
 

@@ -3,6 +3,7 @@
 !/.travis.yml
 
 /target
+release.properties
 
 *.class
 

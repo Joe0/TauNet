@@ -9,6 +9,8 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import com.joepritzel.feather.PSBroker;
 import com.joepritzel.feather.Subscriber;
+import com.joepritzel.taunet.IDAlreadyConnectedException;
+import com.joepritzel.taunet.net.NetworkingImplementation;
 import com.joepritzel.taunet.net.impl.NettyAttributes;
 import com.joepritzel.taunet.net.impl.NettySelfID;
 
@@ -26,6 +28,11 @@ public class JSONDecoder extends Subscriber<JSONToObject> {
 	private final PSBroker broker;
 
 	/**
+	 * The instance of NetworkingImplementation to use.
+	 */
+	private final NetworkingImplementation netImpl;
+
+	/**
 	 * A collection of possible class types to check.
 	 */
 	private final List<Class<?>> classTypeList = new ArrayList<>();
@@ -36,11 +43,13 @@ public class JSONDecoder extends Subscriber<JSONToObject> {
 	 * @param broker
 	 *            - The PSBroker to use.
 	 */
-	public JSONDecoder(PSBroker broker) {
+	public JSONDecoder(PSBroker broker, NetworkingImplementation netImpl) {
 		this.broker = broker;
+		this.netImpl = netImpl;
 		broker.subscribe(new JSONDecoderRegisterReader(),
 				JSONDecoderRegister.class);
 		classTypeList.add(NettySelfID.class);
+		classTypeList.add(IDAlreadyConnectedException.class);
 	}
 
 	/**
@@ -63,8 +72,21 @@ public class JSONDecoder extends Subscriber<JSONToObject> {
 								Object o = gson.fromJson(w.json, e);
 								if (o instanceof NettySelfID) {
 									NettySelfID id = (NettySelfID) o;
-									message.channel.attr(NettyAttributes.idKey)
-											.set(id.id);
+									if (netImpl.getConnectionByID(id.id) == null) {
+										message.channel.attr(
+												NettyAttributes.idKey).set(
+												id.id);
+									} else {
+										try {
+											message.channel.writeAndFlush(
+													new IDAlreadyConnectedException(id.id))
+													.sync();
+										} catch (Exception e1) {
+											// Don't care, closing anyway.
+										} finally {
+											message.channel.close();
+										}
+									}
 								} else {
 									broker.publish(o);
 								}
