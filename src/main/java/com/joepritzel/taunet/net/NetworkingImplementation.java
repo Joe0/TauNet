@@ -71,4 +71,24 @@ public interface NetworkingImplementation {
 	 *            - The port to connect or bind to.
 	 */
 	public void setPort(int port);
+
+	/**
+	 * Returns true if it is an internal message. Examples of these are messages
+	 * to set connection IDs.
+	 * 
+	 * @param conn
+	 *            - The connection.
+	 * @param message
+	 *            - The message.
+	 */
+	public boolean isInternalMessage(Connection conn, Object message);
+
+	/**
+	 * Adds internal types that need to be decoded, but may not yet or ever have
+	 * a subscriber listening for them.
+	 * 
+	 * @param classTypeList
+	 *            - The list to add types to.
+	 */
+	public void addTypes(List<Class<?>> classTypeList);
 }

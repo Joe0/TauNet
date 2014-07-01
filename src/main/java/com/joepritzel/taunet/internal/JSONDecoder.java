@@ -11,8 +11,6 @@ import com.joepritzel.feather.PSBroker;
 import com.joepritzel.feather.Subscriber;
 import com.joepritzel.taunet.IDAlreadyConnectedException;
 import com.joepritzel.taunet.net.NetworkingImplementation;
-import com.joepritzel.taunet.net.impl.NettyAttributes;
-import com.joepritzel.taunet.net.impl.NettySelfID;
 
 /**
  * Used to decode JSON objects to the original object sent across the network.
@@ -48,7 +46,7 @@ public class JSONDecoder extends Subscriber<JSONToObject> {
 		this.netImpl = netImpl;
 		broker.subscribe(new JSONDecoderRegisterReader(),
 				JSONDecoderRegister.class);
-		classTypeList.add(NettySelfID.class);
+		netImpl.addTypes(classTypeList);
 		classTypeList.add(IDAlreadyConnectedException.class);
 	}
 
@@ -70,17 +68,8 @@ public class JSONDecoder extends Subscriber<JSONToObject> {
 						e -> {
 							try {
 								Object o = gson.fromJson(w.json, e);
-								if (o instanceof NettySelfID) {
-									NettySelfID id = (NettySelfID) o;
-									if (netImpl.getConnectionByID(id.id) == null) {
-										message.channel.attr(
-												NettyAttributes.idKey).set(
-												id.id);
-									} else {
-										throw new IDAlreadyConnectedException(
-												id.id);
-									}
-								} else {
+								boolean internalMessage = netImpl.isInternalMessage(message.channel, o);
+								if(!internalMessage) {
 									broker.publish(o);
 								}
 							} catch (JsonSyntaxException e1) {

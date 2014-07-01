@@ -29,6 +29,12 @@ import com.joepritzel.taunet.internal.JSONToObject;
 import com.joepritzel.taunet.net.NetworkingImplementation;
 import com.joepritzel.taunet.net.Send;
 
+/**
+ * A server-side NetworkingImplementation that uses Netty.
+ * 
+ * @author Joe Pritzel.
+ *
+ */
 public class NettyTCPServerImplementation implements NetworkingImplementation {
 
 	private String host;
@@ -67,7 +73,7 @@ public class NettyTCPServerImplementation implements NetworkingImplementation {
 	/**
 	 * The instance of NettySendReader being used.
 	 */
-	private NettySendReader sendReader;
+	private NettySendReader<?> sendReader;
 
 	public NettyTCPServerImplementation(String host, int port) {
 		this.host = host;
@@ -90,7 +96,7 @@ public class NettyTCPServerImplementation implements NetworkingImplementation {
 					"Can not call start more than once.");
 		}
 		this.id = id;
-		sendReader = new NettySendReader();
+		sendReader = new NettySendReader<>();
 		broker.subscribe(sendReader, Send.class);
 		group = new NioEventLoopGroup();
 		ServerBootstrap b = new ServerBootstrap();
@@ -128,12 +134,18 @@ public class NettyTCPServerImplementation implements NetworkingImplementation {
 		@Override
 		public void channelRead(ChannelHandlerContext ctx, Object msg)
 				throws Exception {
+			Connection conn = null;
 			try {
-				broker.publish(new JSONToObject(ctx.channel(), (String) msg));
+				conn = new NettyConnection(ctx.channel(), ctx.attr(
+						NettyAttributes.idKey).get());
+				broker.publish(new JSONToObject(conn, (String) msg));
 			} catch (IDAlreadyConnectedException e) {
 				try {
-				sendReader.exception(ctx.channel(), e);
-				} catch(Throwable e1) {
+					if (conn == null) {
+						conn = new NettyConnection(ctx.channel());
+					}
+					sendReader.exception(conn, e);
+				} catch (Throwable e1) {
 					e1.printStackTrace();
 				}
 			}
@@ -195,6 +207,26 @@ public class NettyTCPServerImplementation implements NetworkingImplementation {
 			throw new IllegalStateException("Can not change IP once running.");
 		}
 		this.port = port;
+	}
+
+	@Override
+	public boolean isInternalMessage(Connection conn, Object o) {
+		if (o instanceof NettySelfID) {
+			NettySelfID id = (NettySelfID) o;
+			if (getConnectionByID(id.id) == null) {
+				((NettyConnection) conn).channel.attr(NettyAttributes.idKey)
+						.set(id.id);
+			} else {
+				throw new IDAlreadyConnectedException(id.id);
+			}
+			return true;
+		}
+		return false;
+	}
+
+	@Override
+	public void addTypes(List<Class<?>> classTypeList) {
+		classTypeList.add(NettySelfID.class);
 	}
 
 }

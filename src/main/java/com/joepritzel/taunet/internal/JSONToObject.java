@@ -1,6 +1,6 @@
 package com.joepritzel.taunet.internal;
 
-import io.netty.channel.Channel;
+import com.joepritzel.taunet.Connection;
 
 /**
  * A value object to hold the JSON data sent across the network and channel in
@@ -14,7 +14,7 @@ public class JSONToObject {
 	/**
 	 * The channel being sent over.
 	 */
-	public final Channel channel;
+	public final Connection channel;
 
 	/**
 	 * The data to hold.
@@ -24,13 +24,13 @@ public class JSONToObject {
 	/**
 	 * Creates a new value object to hold the data and channel.
 	 * 
-	 * @param channel
+	 * @param conn
 	 *            - The channel that is being used.
 	 * @param json
 	 *            - The data that is being sent.
 	 */
-	public JSONToObject(Channel channel, String json) {
+	public JSONToObject(Connection conn, String json) {
 		this.json = json;
-		this.channel = channel;
+		this.channel = conn;
 	}
 }

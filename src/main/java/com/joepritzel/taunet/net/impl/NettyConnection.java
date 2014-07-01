@@ -36,8 +36,8 @@ public class NettyConnection implements Connection {
 	 * Used in the constructor to get the default ID.
 	 */
 	private static String getIDCons(Channel channel) {
-		String id =  channel.attr(NettyAttributes.idKey).get();
-		if(id == null) {
+		String id = channel.attr(NettyAttributes.idKey).get();
+		if (id == null) {
 			return "";
 		}
 		return id;
@@ -63,6 +63,17 @@ public class NettyConnection implements Connection {
 	public void setID(String id) {
 		this.id = id;
 		this.channel.attr(NettyAttributes.idKey).set(id);
+	}
+
+	@Override
+	public void sendException(String encodedException) {
+		try {
+			channel.writeAndFlush(encodedException).sync();
+		} catch (InterruptedException e1) {
+			// Don't care.
+		} finally {
+			channel.close();
+		}
 	}
 
 }

@@ -20,4 +20,12 @@ public interface Connection {
 	 *            - The new ID.
 	 */
 	public void setID(String id);
+
+	/**
+	 * Sends an encoded exception.
+	 * 
+	 * @param encodedException
+	 *            - The exception.
+	 */
+	public void sendException(String encodedException);
 }

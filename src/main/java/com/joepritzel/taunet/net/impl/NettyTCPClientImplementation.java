@@ -22,10 +22,17 @@ import io.netty.util.CharsetUtil;
 
 import com.joepritzel.feather.PSBroker;
 import com.joepritzel.taunet.Connection;
+import com.joepritzel.taunet.IDAlreadyConnectedException;
 import com.joepritzel.taunet.internal.JSONToObject;
 import com.joepritzel.taunet.net.NetworkingImplementation;
 import com.joepritzel.taunet.net.Send;
 
+/**
+ * A client-side NetworkingImplementation that uses Netty.
+ * 
+ * @author Joe Pritzel.
+ *
+ */
 public class NettyTCPClientImplementation implements NetworkingImplementation {
 
 	/**
@@ -88,7 +95,7 @@ public class NettyTCPClientImplementation implements NetworkingImplementation {
 			throw new IllegalStateException("Can only call start once.");
 		}
 		this.id = id;
-		broker.subscribe(new NettySendReader(), Send.class);
+		broker.subscribe(new NettySendReader<>(), Send.class);
 		group = new NioEventLoopGroup();
 		Bootstrap b = new Bootstrap();
 		b.group(group).channel(NioSocketChannel.class)
@@ -128,7 +135,14 @@ public class NettyTCPClientImplementation implements NetworkingImplementation {
 
 		@Override
 		public void channelRead(ChannelHandlerContext ctx, Object msg) {
-			broker.publish(new JSONToObject(ctx.channel(), (String) msg));
+			Connection conn = new NettyConnection(ctx.channel());
+			try {
+				conn = new NettyConnection(ctx.channel(), ctx.attr(
+						NettyAttributes.idKey).get());
+			} catch (Exception e) {
+				// Don't care, already set.
+			}
+			broker.publish(new JSONToObject(conn, (String) msg));
 		}
 
 		@Override
@@ -182,5 +196,24 @@ public class NettyTCPClientImplementation implements NetworkingImplementation {
 			throw new IllegalStateException("Can not change IP once running.");
 		}
 		this.port = port;
+	}
+
+	@Override
+	public boolean isInternalMessage(Connection conn, Object o) {
+		if (o instanceof NettySelfID) {
+			NettySelfID id = (NettySelfID) o;
+			if (getConnectionByID(id.id) == null) {
+				((NettyConnection) conn).channel.attr(NettyAttributes.idKey)
+						.set(id.id);
+			} else {
+				throw new IDAlreadyConnectedException(id.id);
+			}
+		}
+		return false;
+	}
+
+	@Override
+	public void addTypes(List<Class<?>> classTypeList) {
+		classTypeList.add(NettySelfID.class);
 	}
 }
