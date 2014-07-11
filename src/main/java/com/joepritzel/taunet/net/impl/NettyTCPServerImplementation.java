@@ -137,7 +137,7 @@ public class NettyTCPServerImplementation implements NetworkingImplementation {
 				throws Exception {
 			Connection conn = null;
 			try {
-				conn = new NettyConnection(ctx.channel(), ctx.attr(
+				conn = new NettyConnection(ctx.channel(), ctx.channel().attr(
 						NettyAttributes.idKey).get());
 				broker.publish(new JSONToObject(conn, (String) msg));
 			} catch (IDAlreadyConnectedException e) {
@@ -159,7 +159,7 @@ public class NettyTCPServerImplementation implements NetworkingImplementation {
 
 		@Override
 		public void channelInactive(ChannelHandlerContext ctx) {
-			Connection conn = new NettyConnection(ctx.channel(), ctx.attr(
+			Connection conn = new NettyConnection(ctx.channel(), ctx.channel().attr(
 					NettyAttributes.idKey).get());
 			clients.remove(ctx.channel());
 			broker.publish(new ConnectionDisconnected(conn));
