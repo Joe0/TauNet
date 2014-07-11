@@ -7,7 +7,10 @@ import com.joepritzel.taunet.Connection;
 
 /**
  * An interface that all NetworkingImplementations must use. Used to abstract
- * away the internal details of a networking layer.
+ * away the internal details of a networking layer.<br>
+ * <br>
+ * When a connection disconnects from a server, it must publish a
+ * ConnectionDisconnected object to the PSBroker.
  * 
  * @author Joe Pritzel
  *

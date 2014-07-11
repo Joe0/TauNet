@@ -24,6 +24,7 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 
 import com.joepritzel.feather.PSBroker;
 import com.joepritzel.taunet.Connection;
+import com.joepritzel.taunet.ConnectionDisconnected;
 import com.joepritzel.taunet.IDAlreadyConnectedException;
 import com.joepritzel.taunet.internal.JSONToObject;
 import com.joepritzel.taunet.net.NetworkingImplementation;
@@ -158,7 +159,10 @@ public class NettyTCPServerImplementation implements NetworkingImplementation {
 
 		@Override
 		public void channelInactive(ChannelHandlerContext ctx) {
+			Connection conn = new NettyConnection(ctx.channel(), ctx.attr(
+					NettyAttributes.idKey).get());
 			clients.remove(ctx.channel());
+			broker.publish(new ConnectionDisconnected(conn));
 		}
 
 		@Override
