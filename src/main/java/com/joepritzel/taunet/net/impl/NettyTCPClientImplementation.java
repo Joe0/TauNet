@@ -137,7 +137,7 @@ public class NettyTCPClientImplementation implements NetworkingImplementation {
 		public void channelRead(ChannelHandlerContext ctx, Object msg) {
 			Connection conn = new NettyConnection(ctx.channel());
 			try {
-				conn = new NettyConnection(ctx.channel(), ctx.attr(
+				conn = new NettyConnection(ctx.channel(), ctx.channel().attr(
 						NettyAttributes.idKey).get());
 			} catch (Exception e) {
 				// Don't care, already set.
